@@ -9,9 +9,14 @@ import {
 } from 'firebase/storage'
 import { app } from '../firebase'
 
-import {} from '../redux/user/userSlice'
+import {
+	updateUserStart,
+	updateUserFailure,
+	updateUserSuccess,
+} from '../redux/user/userSlice'
 
 const Profile = () => {
+	const dispatch = useDispatch()
 	const fileRef = useRef(null)
 	const [image, setImage] = useState(undefined)
 	const [imagePercent, setImagePercent] = useState(0)
@@ -27,7 +32,6 @@ const Profile = () => {
 	}, [image])
 
 	const handleFileUpload = async (image) => {
-		const dispatch = useDispatch()
 		const storage = getStorage(app)
 		const filename = new Date().getTime() + image.name
 		const storageRef = ref(storage, filename)
@@ -57,6 +61,22 @@ const Profile = () => {
 		e.preventDefault()
 
 		try {
+			dispatch(updateUserStart())
+			const res = await fetch(`/api/user/update/${currentUser._id}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(formData),
+			})
+
+			const data = await res.json()
+			if (data.success === false) {
+				dispatch(updateUserFailure(data))
+				return
+			}
+			dispatch(updateUserSuccess(data))
+			setUpdateSuccess(true)
 		} catch (error) {
 			dispatch(updateUserFailure(error))
 		}
@@ -65,7 +85,7 @@ const Profile = () => {
 	return (
 		<div className='p-3 max-w-lg mx-auto'>
 			<h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
-			<form className='flex flex-col gap-4'>
+			<form onSubmit={handleSubmit} className='flex flex-col gap-4'>
 				<input
 					type='file'
 					ref={fileRef}
